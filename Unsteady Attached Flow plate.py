@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 import copy
 
 # some initial data
+pathName='E://Research//Scripts//Potential Flow//Panel Method//Git_Panel_Methods//frames'
 Uinf=3
 rho=1.204
 chord=.12
@@ -25,17 +26,17 @@ xStep=chord/(numPanels/2)
 xp[0]=chord/2
 yp[0]=0
 i=1
-while i<numPanels/8:
+while i<numPanels//8:
     xp[i]=chord/2-xStep*i
     yp[i]=-minRad/majRad*(majRad**2-(majRad-xStep*i)**2)**(1/2)
     i=i+1
     
-while i<=numPanels/4+numPanels/8:
+while i<=numPanels//4+numPanels//8:
     xp[i]=chord/2-xStep*i
     yp[i]=-minRad
     i=i+1
     
-while i<numPanels/2:
+while i<numPanels//2:
     xp[i]=chord/2-xStep*i
     yp[i]=-minRad/majRad*(majRad**2-(xp[i]+(chord/2-majRad))**2)**(1/2)
     i=i+1
@@ -51,8 +52,9 @@ for i in range(numPanels):
     yc[i]=(yp[i]+yp[i+1])/2
 
 # time frames, panel positions, collocation positions, induced freestream velocities
-numFrames=2  
-tInterval=np.linspace(0,.05,numFrames)
+numFrames=12
+tEnd=.5
+tInterval=np.linspace(0,tEnd,numFrames)
 f=2
 omega=2*np.pi*f
 h0=.05
@@ -74,11 +76,10 @@ theta=np.zeros((numPanels,1))
 for i in range(numPanels):
     theta[i]=np.arctan2(yp[i+1]-yp[i],xp[i+1]-xp[i])
     
-# influence coefficients global x y
+# influence coefficients panel coordinates
 ups=np.zeros((numPanels,numPanels))
 wps=np.zeros((numPanels,numPanels))  
-
-#   local panel coor to global  
+  
 for i in range(numPanels):   # collocation points
     for j in range(numPanels):  # panels 
         r1=((xc[i]-xp[j])**2+(yc[i]-yp[j])**2)**(1/2)
@@ -106,15 +107,58 @@ A[:numPanels,-1]=np.sum(nVortex,axis=1)
 A[-1,:numPanels]=tSource[0,:]+tSource[-1,:]
 A[-1,-1]=np.sum(tVortex[0,:])+np.sum(tVortex[-1,:])
 
+#   airfoil perimeter
+si=np.zeros((numPanels,1))
+perimeter=0
+for i in range(numPanels):
+        si[i]=((xp[i+1]-xp[i])**2+(yp[i+1]-yp[i])**2)**(1/2)
+        perimeter=perimeter+si[i]
+ 
+#   calculate velocities in the flow field
+upsField=np.zeros((numPoints*numPoints,numPanels))
+wpsField=np.zeros((numPoints*numPoints,numPanels))
+
+#   influence coefficients for points outside the foil
+for i in range(numPoints): # each row of grid points
+    for j in range(numPoints): # each grid point in each row
+        for k in range(numPanels): # for each panel
+            r1=((X[0,j]-xp[k])**2+(Y[i,0]-yp[k])**2)**(1/2)
+            r2=((X[0,j]-xp[k+1])**2+(Y[i,0]-yp[k+1])**2)**(1/2)
+            nu2=np.arctan2(-(X[0,j]-xp[k])*np.sin(theta[k])+(Y[i,0]-yp[k])*np.cos(theta[k])+(xp[k+1]-xp[k])*np.sin(theta[k])-(yp[k+1]-yp[k])*np.cos(theta[k]),\
+                         (X[0,j]-xp[k])*np.cos(theta[k])+(Y[i,0]-yp[k])*np.sin(theta[k])-(xp[k+1]-xp[k])*np.cos(theta[k])-(yp[k+1]-yp[k])*np.sin(theta[k]))
+            nu1=np.arctan2(-(X[0,j]-xp[k])*np.sin(theta[k])+(Y[i,0]-yp[k])*np.cos(theta[k]),(X[0,j]-xp[k])*np.cos(theta[k])+(Y[i,0]-yp[k])*np.sin(theta[k]))
+            upsField[i*numPoints+j,k]=1/(4*np.pi)*np.log(r1**2/r2**2)
+            wpsField[i*numPoints+j,k]=1/(2*np.pi)*(nu2-nu1)
+upvField=copy.copy(wpsField)
+wpvField=-upsField
+
+#   transform influence coefficients to cartesian
+ugsField=upsField*np.cos(np.transpose(theta))-wpsField*np.sin(np.transpose(theta))
+wgsField=upsField*np.sin(np.transpose(theta))+wpsField*np.cos(np.transpose(theta))
+ugvField=upvField*np.cos(np.transpose(theta))-wpvField*np.sin(np.transpose(theta))
+wgvField=upvField*np.sin(np.transpose(theta))+wpvField*np.cos(np.transpose(theta))
+
+#   x and y influence coefficients for points outside the foil
+AFieldx=np.zeros((numPoints*numPoints,numPanels+1))
+AFieldy=np.zeros((numPoints*numPoints,numPanels+1))
+AFieldx[:,:numPanels]=ugsField
+AFieldx[:,-1]=np.sum(ugvField,axis=1)
+AFieldy[:,:numPanels]=wgsField
+AFieldy[:,-1]=np.sum(wgvField,axis=1)
+
+xVelStream=np.zeros((numPoints,numPoints))
+yVelStream=np.zeros((numPoints,numPoints))  
+      
 # data storage
 tangVelSto=np.zeros((numPanels,numFrames))
 ClKuttaSto=np.zeros((numFrames,1))
 ClBernSto=np.zeros((numFrames,1))
- 
+xSto=np.zeros((numPanels+1,numFrames))
+
 # panel method for each snap shot in time interval
 for t in range(numFrames):     
     # induced velocity and AoA at collocation point
-    AoA=theta_t[t]-np.arctan2(h_t_dot[t]+xc*theta_t_dot[t]*np.cos(theta_t[t]),Uinf-theta_t_dot[t]*xc*np.sin(theta_t[t]))#!!!!!!!!!!!!!!
+    AoA=theta_t[t]-np.arctan2(h_t_dot[t]-xc*theta_t_dot[t]*np.cos(theta_t[t]),Uinf+theta_t_dot[t]*xc*np.sin(theta_t[t]))#!!!!!!!!!!!!!!
     normU=Uinf*np.sin(AoA-theta)
     tangU=Uinf*np.cos(AoA-theta)
     
@@ -127,17 +171,10 @@ for t in range(numFrames):
     x=np.linalg.solve(A,b)
     
     #confirm that velocities on airfoil are tangential
-#    normVelFoil=np.zeros((numPanels,1))
-#    tangVelFoil=np.zeros((numPanels,1))
     normVelFoil=np.dot(nSource,x[:-1])+np.dot(nVortex,x[-1]*np.ones((numPanels,1)))+normU
     tangVelFoil=np.dot(tSource,x[:-1])+np.dot(tVortex,x[-1]*np.ones((numPanels,1)))+tangU
     
     # Lift from kutta
-    si=np.zeros((numPanels,1))
-    perimeter=0
-    for i in range(numPanels):
-        si[i]=((xp[i+1]-xp[i])**2+(yp[i+1]-yp[i])**2)**(1/2)
-        perimeter=perimeter+si[i]
     gamma=x[-1]*perimeter
     Cl_kutta=2*gamma/(Uinf*chord)
     
@@ -151,7 +188,32 @@ for t in range(numFrames):
     lift_bern=np.sum(yForceDist)
     Cl_bern=2*lift_bern/(rho*Uinf**2*chord)
     
+    # adjust freestream velocity in domain to account for heaving and pitching
+    xModU=(Uinf+theta_t_dot[t]*X[0,:]*np.sin(theta_t[t]))*np.cos(theta_t[t])+(-h_t_dot[t]+theta_t_dot[t]*X[0,:]*np.cos(theta_t[t]))*-np.sin(theta_t[t])
+    yModU=(Uinf+theta_t_dot[t]*X[0,:]*np.sin(theta_t[t]))*np.sin(theta_t[t])+(-h_t_dot[t]+theta_t_dot[t]*X[0,:]*np.cos(theta_t[t]))*np.cos(theta_t[t])
+    
+    # calculate velocity stream vectors 
+    for i in range(numPoints): # each row of points
+        for j in range(numPoints): # each point in row
+            xVelStream[i,j]=np.dot(AFieldx[i*numPoints+j,:],x)+xModU[j]
+            yVelStream[i,j]=np.dot(AFieldy[i*numPoints+j,:],x)+yModU[j]
+    
+    # plot velocity vectors
+    title='t/T = ' + '{:3f}'.format(tInterval[t]/tEnd)+ r' , $\theta_p = $' + '{:3f}'.format(theta_t[t]/np.pi*180) +' deg , ' + r'$C_L = $' + '{:3f}'.format(Cl_kutta[0])
+    fig1=plt.figure(figsize=(12,8))
+    fig1.suptitle(title,fontsize=14)
+    fig1.add_subplot(111)
+    plt.ylim(yLower,yUpper)
+    plt.xlim(xLeft,xRight)
+    plt.plot(xp,yp)
+    plt.quiver(X,Y,xVelStream,yVelStream,color='r')
+    plt.plot(xc,yc,'*',color='m')
+    plt.savefig(pathName + '//frame' + str(t))
+    
     # save data
     tangVelSto[:,t]=tangVelFoil[:,0]
     ClKuttaSto[t]=Cl_kutta
     ClBernSto[t]=Cl_bern
+    xSto[:,t]=x[:,0]
+
+plt.plot(tInterval,ClKuttaSto)

@@ -101,8 +101,6 @@ b[-1]=-tangU[0]-tangU[-1]
 x=np.linalg.solve(A,b)
 
 #confirm that velocities on airfoil are tangential
-normVelFoil=np.zeros((numPanels,1))
-tangVelFoil=np.zeros((numPanels,1))
 normVelFoil=np.dot(nSource,x[:-1])+np.dot(nVortex,x[-1]*np.ones((numPanels,1)))+normU
 tangVelFoil=np.dot(tSource,x[:-1])+np.dot(tVortex,x[-1]*np.ones((numPanels,1)))+tangU
 
