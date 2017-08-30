@@ -11,13 +11,13 @@ import copy
 
 # some initial data
 pathName='E://Research//Scripts//Potential Flow//Panel Method//Git_Panel_Methods//frames'
-Uinf=3
+Uinf=8.8
 rho=1.204
 chord=.12
 thickness=.006
 minRad=thickness/2
 majRad=chord/4
-numPanels=32
+numPanels=64
 xp=np.zeros((numPanels+1,1))
 yp=np.zeros((numPanels+1,1))
 
@@ -57,7 +57,7 @@ tEnd=.5
 tInterval=np.linspace(0,tEnd,numFrames)
 f=2
 omega=2*np.pi*f
-h0=.05
+h0=.1
 theta0=60*np.pi/180
 h_t=h0*np.cos(omega*tInterval)
 h_t_dot=-h0*omega*np.sin(omega*tInterval)
@@ -152,7 +152,9 @@ yVelStream=np.zeros((numPoints,numPoints))
 # data storage
 tangVelSto=np.zeros((numPanels,numFrames))
 ClKuttaSto=np.zeros((numFrames,1))
+CYKuttaSto=np.zeros((numFrames,1))
 ClBernSto=np.zeros((numFrames,1))
+CYBernSto=np.zeros((numFrames,1))
 xSto=np.zeros((numPanels+1,numFrames))
 
 # panel method for each snap shot in time interval
@@ -177,16 +179,17 @@ for t in range(numFrames):
     # Lift from kutta
     gamma=x[-1]*perimeter
     Cl_kutta=2*gamma/(Uinf*chord)
-    
-    # Lift from conformal mapping
-#    Cl_kutta=2*lift_kutta/(rho*Uinf**2*chord)
-#    Cl_J=2*np.pi*np.sin(AoA)
+    CY_kutta=Cl_kutta*np.cos(np.average(AoA))
     
     # lift from bernoulli
     dP=np.reshape(1/2*rho*(Uinf**2-tangVelFoil**2),(numPanels,1))
     yForceDist=-dP*si*np.cos(theta-AoA)
     lift_bern=np.sum(yForceDist)
     Cl_bern=2*lift_bern/(rho*Uinf**2*chord)
+    CY_bern=Cl_bern*np.cos(np.average(AoA))
+    
+    # moment about pitching axis
+    
     
     # adjust freestream velocity in domain to account for heaving and pitching
     xModU=(Uinf+theta_t_dot[t]*X[0,:]*np.sin(theta_t[t]))*np.cos(theta_t[t])+(-h_t_dot[t]+theta_t_dot[t]*X[0,:]*np.cos(theta_t[t]))*-np.sin(theta_t[t])
@@ -199,7 +202,8 @@ for t in range(numFrames):
             yVelStream[i,j]=np.dot(AFieldy[i*numPoints+j,:],x)+yModU[j]
     
     # plot velocity vectors
-    title='t/T = ' + '{:3f}'.format(tInterval[t]/tEnd)+ r' , $\theta_p = $' + '{:3f}'.format(theta_t[t]/np.pi*180) +' deg , ' + r'$C_L = $' + '{:3f}'.format(Cl_kutta[0])
+    title='t/T = ' + '{:3f}'.format(tInterval[t]/tEnd)+ r' , $\theta_p = $' + '{:3f}'.format(theta_t[t]/np.pi*180) +' deg , ' + r'$C_L = $' + '{:3f}'.format(Cl_kutta[0]) +\
+                      r' , $C_Y = $' + '{:3f}'.format(CY_kutta[0])
     fig1=plt.figure(figsize=(12,8))
     fig1.suptitle(title,fontsize=14)
     fig1.add_subplot(111)
@@ -209,11 +213,14 @@ for t in range(numFrames):
     plt.quiver(X,Y,xVelStream,yVelStream,color='r')
     plt.plot(xc,yc,'*',color='m')
     plt.savefig(pathName + '//frame' + str(t))
+    plt.close()
     
     # save data
     tangVelSto[:,t]=tangVelFoil[:,0]
     ClKuttaSto[t]=Cl_kutta
+    CYKuttaSto[t]=Cl_kutta*np.cos(np.average(AoA))
     ClBernSto[t]=Cl_bern
+    CYBernSto[t]=Cl_bern*np.cos(np.average(AoA))
     xSto[:,t]=x[:,0]
 
 plt.plot(tInterval,ClKuttaSto)

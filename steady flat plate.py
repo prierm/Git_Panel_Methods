@@ -5,19 +5,19 @@ steady panel method from HSPM
 """
 
 import numpy as np
-import scipy as sc
 import matplotlib.pyplot as plt
 import copy
 
 # setup panel coordinates and control point coordinates
-AoA=10*np.pi/180
-Uinf=9
+AoA=5*np.pi/180
+Uinf=8.8
 rho=1.204
 chord=.12
-thickness=.01
+span=chord*2
+thickness=.001
 minRad=thickness/2
 majRad=chord/4
-numPanels=128
+numPanels=64
 xp=np.zeros((numPanels+1,1))
 yp=np.zeros((numPanels+1,1))
 
@@ -175,7 +175,7 @@ plt.xlim(xLeft,xRight)
 plt.plot(xp,yp)
 plt.quiver(X,Y,xVelStream,yVelStream,color='r')
 plt.plot(xc,yc,'*',color='m')
-#plt.savefig('steady_plate_15_AoA.png')
+plt.savefig('steady_plate_5_AoA_.png')
 
 print('C_L from kutta:',Cl_kutta)
 print('C_L from bernoulli:',Cl_bern)
