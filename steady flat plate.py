@@ -10,14 +10,14 @@ import matplotlib.pyplot as plt
 import copy
 
 # setup panel coordinates and control point coordinates
-AoA=0*np.pi/180
+AoA=10*np.pi/180
 Uinf=9
 rho=1.204
 chord=.12
-thickness=.006
+thickness=.01
 minRad=thickness/2
 majRad=chord/4
-numPanels=64
+numPanels=128
 xp=np.zeros((numPanels+1,1))
 yp=np.zeros((numPanels+1,1))
 
@@ -43,7 +43,6 @@ while i<numPanels/2:
 xp[i]=chord/2-xStep*i
 xp[i+1:]=xp[i-1::-1]
 yp[i+1:]=-yp[i-1::-1]
-plt.plot(xp,yp)
 
 # collocation points
 xc=np.zeros((numPanels,1))
@@ -114,10 +113,9 @@ for i in range(numPanels):
     si[i]=((xp[i+1]-xp[i])**2+(yp[i+1]-yp[i])**2)**(1/2)
     perimeter=perimeter+si[i]
 gamma=x[-1]*perimeter
-lift_kutta=rho*Uinf*gamma
 
 # Lift from conformal mapping
-Cl_kutta=2*lift_kutta/(rho*Uinf**2*chord)
+Cl_kutta=2*gamma/(Uinf*chord)
 Cl_J=2*np.pi*np.sin(AoA)
 
 # lift from bernoulli
@@ -183,4 +181,4 @@ plt.plot(xc,yc,'*',color='m')
 
 print('C_L from kutta:',Cl_kutta)
 print('C_L from bernoulli:',Cl_bern)
-print('C_L from joukowski:',Cl_J)
+print('C_L from conformal mapping:',Cl_J)
