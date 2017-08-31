@@ -190,9 +190,8 @@ for t in range(numFrames):
     Cl_bern=2*lift_bern/(rho*Uinf**2*chord)
     CY_bern=Cl_bern*np.cos(np.average(AoA))
     
-    # moment about pitching axis from kutta
-    FyKutta=rho*(normU**2+tangU**2)**(1/2)*x[-1]*np.cos(AoA)
-    momentKutta=np.sum(FyKutta*-xc)
+    # moment from bernoulli
+    momentBern=np.sum(yForceDist*np.cos(AoA)*-xc)
     
     # coefficient of pressure over chord, 1st column collocation point, 2nd column Cp
     CP=np.zeros((numPanels//2,2))
@@ -230,7 +229,7 @@ for t in range(numFrames):
     ClBernSto[t]=Cl_bern
     CYBernSto[t]=Cl_bern*np.cos(np.average(AoA))
     xSto[:,t]=x[:,0]
-    momSto[t]=momentKutta
+    momSto[t]=momentBern
     CPSto[:,t]=CP[:,1]
 
 plt.plot(tInterval,CYKuttaSto)

@@ -10,14 +10,14 @@ import copy
 
 # setup panel coordinates and control point coordinates
 AoA=5*np.pi/180
-Uinf=3
+Uinf=8.8
 rho=1.204
 chord=.12
 span=chord*2
-thickness=.006
+thickness=.001
 minRad=thickness/2
 majRad=chord/4
-numPanels=128
+numPanels=64
 xp=np.zeros((numPanels+1,1))
 yp=np.zeros((numPanels+1,1))
 
@@ -122,14 +122,11 @@ yForceDist=-dP*si*np.cos(theta-AoA)
 lift_bern=np.sum(yForceDist)
 Cl_bern=2*lift_bern/(rho*Uinf**2*chord)
 
-# moment about pitching axis from kutta
-FyKutta=rho*(normU**2+tangU**2)**(1/2)*x[-1]*np.cos(AoA)
-momentKutta=np.sum(FyKutta*-xc)
+# moment about pitching axis from Bernoulli
+momentBern=np.sum(yForceDist*np.cos(AoA)*xc)
 
 # coefficient of pressure over chord, 1st column collocation point, 2nd column Cp
-CP=np.zeros((numPanels//2,2))
-CP[:,0]=np.reshape(xc[:numPanels//2],(numPanels//2,))
-CP[:,1]=np.reshape((dP[:numPanels//2]-dP[numPanels//2-1::-1])/(1/2*rho*Uinf**2),(numPanels//2,))
+Cp=dP/(1/2*rho*Uinf**2)
 
 # calculate velocities in the flow field
 numPoints=20
@@ -189,11 +186,12 @@ plt.plot(xc,yc,'*',color='m')
 # plot pressure coefficient
 fig2=plt.figure(figsize=(12,8))
 fig2.add_subplot(111)
-plt.plot(CP[:,0],CP[:,1])
+plt.plot(xc[:numPanels//2+1],Cp[:numPanels//2+1])
+plt.plot(xc[numPanels//2:],Cp[numPanels//2:])
 plt.xlabel('chord',fontsize=14)
 plt.ylabel(r'$C_P$',fontsize=14)
 
 print('C_L from kutta:',Cl_kutta)
 print('C_L from bernoulli:',Cl_bern)
 print('C_L from conformal mapping:',Cl_J)
-print('moment about pivot: ',momentKutta)
+print('moment about pivot: ',momentBern)
