@@ -17,7 +17,7 @@ chord=.12
 thickness=.006
 minRad=thickness/2
 majRad=chord/4
-numPanels=64
+numPanels=32
 xp=np.zeros((numPanels+1,1))
 yp=np.zeros((numPanels+1,1))
 
@@ -156,6 +156,8 @@ CYKuttaSto=np.zeros((numFrames,1))
 ClBernSto=np.zeros((numFrames,1))
 CYBernSto=np.zeros((numFrames,1))
 xSto=np.zeros((numPanels+1,numFrames))
+momSto=np.zeros((numFrames,1))
+CPSto=np.zeros((numPanels//2,numFrames))
 
 # panel method for each snap shot in time interval
 for t in range(numFrames):     
@@ -188,8 +190,14 @@ for t in range(numFrames):
     Cl_bern=2*lift_bern/(rho*Uinf**2*chord)
     CY_bern=Cl_bern*np.cos(np.average(AoA))
     
-    # moment about pitching axis
+    # moment about pitching axis from kutta
+    FyKutta=rho*(normU**2+tangU**2)**(1/2)*x[-1]*np.cos(AoA)
+    momentKutta=np.sum(FyKutta*-xc)
     
+    # coefficient of pressure over chord, 1st column collocation point, 2nd column Cp
+    CP=np.zeros((numPanels//2,2))
+    CP[:,0]=np.reshape(xc[:numPanels//2],(numPanels//2,))
+    CP[:,1]=np.reshape((dP[:numPanels//2]-dP[numPanels//2-1::-1])/(1/2*rho*Uinf**2),(numPanels//2,))
     
     # adjust freestream velocity in domain to account for heaving and pitching
     xModU=(Uinf+theta_t_dot[t]*X[0,:]*np.sin(theta_t[t]))*np.cos(theta_t[t])+(-h_t_dot[t]+theta_t_dot[t]*X[0,:]*np.cos(theta_t[t]))*-np.sin(theta_t[t])
@@ -222,5 +230,7 @@ for t in range(numFrames):
     ClBernSto[t]=Cl_bern
     CYBernSto[t]=Cl_bern*np.cos(np.average(AoA))
     xSto[:,t]=x[:,0]
+    momSto[t]=momentKutta
+    CPSto[:,t]=CP[:,1]
 
-plt.plot(tInterval,ClKuttaSto)
+plt.plot(tInterval,CYKuttaSto)

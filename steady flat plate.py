@@ -10,14 +10,14 @@ import copy
 
 # setup panel coordinates and control point coordinates
 AoA=5*np.pi/180
-Uinf=8.8
+Uinf=3
 rho=1.204
 chord=.12
 span=chord*2
-thickness=.001
+thickness=.006
 minRad=thickness/2
 majRad=chord/4
-numPanels=64
+numPanels=128
 xp=np.zeros((numPanels+1,1))
 yp=np.zeros((numPanels+1,1))
 
@@ -111,9 +111,9 @@ for i in range(numPanels):
     si[i]=((xp[i+1]-xp[i])**2+(yp[i+1]-yp[i])**2)**(1/2)
     perimeter=perimeter+si[i]
 gamma=x[-1]*perimeter
+Cl_kutta=2*gamma/(Uinf*chord)
 
 # Lift from conformal mapping
-Cl_kutta=2*gamma/(Uinf*chord)
 Cl_J=2*np.pi*np.sin(AoA)
 
 # lift from bernoulli
@@ -121,6 +121,15 @@ dP=np.reshape(1/2*rho*(Uinf**2-tangVelFoil**2),(numPanels,1))
 yForceDist=-dP*si*np.cos(theta-AoA)
 lift_bern=np.sum(yForceDist)
 Cl_bern=2*lift_bern/(rho*Uinf**2*chord)
+
+# moment about pitching axis from kutta
+FyKutta=rho*(normU**2+tangU**2)**(1/2)*x[-1]*np.cos(AoA)
+momentKutta=np.sum(FyKutta*-xc)
+
+# coefficient of pressure over chord, 1st column collocation point, 2nd column Cp
+CP=np.zeros((numPanels//2,2))
+CP[:,0]=np.reshape(xc[:numPanels//2],(numPanels//2,))
+CP[:,1]=np.reshape((dP[:numPanels//2]-dP[numPanels//2-1::-1])/(1/2*rho*Uinf**2),(numPanels//2,))
 
 # calculate velocities in the flow field
 numPoints=20
@@ -175,8 +184,16 @@ plt.xlim(xLeft,xRight)
 plt.plot(xp,yp)
 plt.quiver(X,Y,xVelStream,yVelStream,color='r')
 plt.plot(xc,yc,'*',color='m')
-plt.savefig('steady_plate_5_AoA_.png')
+#plt.savefig('steady_plate_5_AoA_.png')
+
+# plot pressure coefficient
+fig2=plt.figure(figsize=(12,8))
+fig2.add_subplot(111)
+plt.plot(CP[:,0],CP[:,1])
+plt.xlabel('chord',fontsize=14)
+plt.ylabel(r'$C_P$',fontsize=14)
 
 print('C_L from kutta:',Cl_kutta)
 print('C_L from bernoulli:',Cl_bern)
 print('C_L from conformal mapping:',Cl_J)
+print('moment about pivot: ',momentKutta)
