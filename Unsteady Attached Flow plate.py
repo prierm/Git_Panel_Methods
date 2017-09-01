@@ -17,7 +17,7 @@ chord=.12
 thickness=.006
 minRad=thickness/2
 majRad=chord/4
-numPanels=32
+numPanels=64
 xp=np.zeros((numPanels+1,1))
 yp=np.zeros((numPanels+1,1))
 
@@ -52,12 +52,12 @@ for i in range(numPanels):
     yc[i]=(yp[i]+yp[i+1])/2
 
 # time frames, panel positions, collocation positions, induced freestream velocities
-numFrames=12
+numFrames=24
 tEnd=.5
 tInterval=np.linspace(0,tEnd,numFrames)
 f=2
 omega=2*np.pi*f
-h0=.1
+h0=.0375
 theta0=60*np.pi/180
 h_t=h0*np.cos(omega*tInterval)
 h_t_dot=-h0*omega*np.sin(omega*tInterval)
@@ -158,11 +158,14 @@ CYBernSto=np.zeros((numFrames,1))
 xSto=np.zeros((numPanels+1,numFrames))
 momSto=np.zeros((numFrames,1))
 CPSto=np.zeros((numPanels//2,numFrames))
+AoASto=np.zeros((numFrames,1))
 
 # panel method for each snap shot in time interval
 for t in range(numFrames):     
     # induced velocity and AoA at collocation point
     AoA=theta_t[t]-np.arctan2(h_t_dot[t]-xc*theta_t_dot[t]*np.cos(theta_t[t]),Uinf+theta_t_dot[t]*xc*np.sin(theta_t[t]))#!!!!!!!!!!!!!!
+#    AoA=theta_t[t]+np.arctan2((Uinf+theta_t_dot[t]*xc*np.sin(theta_t[t]))*np.sin(theta_t[t])+(-h_t_dot[t]+theta_t_dot[t]*xc*np.cos(theta_t[t]))*np.cos(theta_t[t]),\
+#               (Uinf+theta_t_dot[t]*xc*np.sin(theta_t[t]))*np.cos(theta_t[t])+(-h_t_dot[t]+theta_t_dot[t]*xc*np.cos(theta_t[t]))*-np.sin(theta_t[t]))
     normU=Uinf*np.sin(AoA-theta)
     tangU=Uinf*np.cos(AoA-theta)
     
@@ -225,11 +228,20 @@ for t in range(numFrames):
     # save data
     tangVelSto[:,t]=tangVelFoil[:,0]
     ClKuttaSto[t]=Cl_kutta
-    CYKuttaSto[t]=Cl_kutta*np.cos(np.average(AoA))
+    CYKuttaSto[t]=CY_kutta
     ClBernSto[t]=Cl_bern
-    CYBernSto[t]=Cl_bern*np.cos(np.average(AoA))
+    CYBernSto[t]=CY_bern
     xSto[:,t]=x[:,0]
     momSto[t]=momentBern
     CPSto[:,t]=CP[:,1]
+    AoASto[t]=np.average(AoA)
 
-plt.plot(tInterval,CYKuttaSto)
+# plot pressure coefficient
+fig2=plt.figure(figsize=(12,8))
+fig2.add_subplot(111)
+plt.plot(tInterval/tInterval[-1],CYKuttaSto)
+plt.plot(tInterval/tInterval[-1],h_t/h0)
+plt.legend([r'$C_Y$',r'$h/h_0$'],loc='lower right',fontsize=14)
+plt.xlabel('t/T',fontsize=18)
+plt.ylabel(r'$C_Y$',fontsize=18)
+plt.savefig('quasi_steady.png')

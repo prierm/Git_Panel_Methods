@@ -9,12 +9,12 @@ import matplotlib.pyplot as plt
 import copy
 
 # setup panel coordinates and control point coordinates
-AoA=5*np.pi/180
+AoA=10*np.pi/180
 Uinf=8.8
 rho=1.204
 chord=.12
 span=chord*2
-thickness=.001
+thickness=.006
 minRad=thickness/2
 majRad=chord/4
 numPanels=64
@@ -123,13 +123,13 @@ lift_bern=np.sum(yForceDist)
 Cl_bern=2*lift_bern/(rho*Uinf**2*chord)
 
 # moment about pitching axis from Bernoulli
-momentBern=np.sum(yForceDist*np.cos(AoA)*xc)
+momentBern=np.sum(yForceDist*np.cos(AoA)*-xc)
 
 # coefficient of pressure over chord, 1st column collocation point, 2nd column Cp
 Cp=dP/(1/2*rho*Uinf**2)
 
 # calculate velocities in the flow field
-numPoints=20
+numPoints=30
 xLeft=-.1
 xRight=.1
 yLower=-.1
@@ -181,15 +181,17 @@ plt.xlim(xLeft,xRight)
 plt.plot(xp,yp)
 plt.quiver(X,Y,xVelStream,yVelStream,color='r')
 plt.plot(xc,yc,'*',color='m')
-#plt.savefig('steady_plate_5_AoA_.png')
+plt.savefig('velocity_steady_plate_5_AoA_thickness_006.png')
 
 # plot pressure coefficient
 fig2=plt.figure(figsize=(12,8))
 fig2.add_subplot(111)
 plt.plot(xc[:numPanels//2+1],Cp[:numPanels//2+1])
 plt.plot(xc[numPanels//2:],Cp[numPanels//2:])
-plt.xlabel('chord',fontsize=14)
-plt.ylabel(r'$C_P$',fontsize=14)
+plt.legend(['bottom surface','top surface'],loc='lower right')
+plt.xlabel('chord',fontsize=18)
+plt.ylabel(r'$C_P$',fontsize=18)
+plt.savefig('pressure_steady_plate_5_AoA_thickness_006.png')
 
 print('C_L from kutta:',Cl_kutta)
 print('C_L from bernoulli:',Cl_bern)

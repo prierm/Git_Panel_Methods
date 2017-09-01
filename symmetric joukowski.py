@@ -9,14 +9,14 @@ import matplotlib.pyplot as plt
 import copy
 
 # setup panel coordinates and control point coordinates
-AoA=5*np.pi/180
-Uinf=3
+AoA=10*np.pi/180
+Uinf=8.8
 rho=1.204
 chord=.12
 thickness=.006
 minRad=thickness/2
 majRad=chord/4
-numPanels=32
+numPanels=64
 panel_coor=np.zeros((numPanels+1,2))
 xp=np.zeros((numPanels+1,1))
 yp=np.zeros((numPanels+1,1))
@@ -155,7 +155,7 @@ for i in range(numPoints): # each row of points
     for j in range(numPoints): # each point in row
         xVelStream[i,j]=np.dot(AFieldx[i*numPoints+j,:],x)+Uinf*np.cos(AoA)
         yVelStream[i,j]=np.dot(AFieldy[i*numPoints+j,:],x)+Uinf*np.sin(AoA)
-
+        
 # plot velocity vectors
 fig1=plt.figure(figsize=(12,8))
 fig1.add_subplot(111)
@@ -164,15 +164,17 @@ plt.xlim(xLeft,xRight)
 plt.plot(xp,yp)
 plt.quiver(X,Y,xVelStream,yVelStream,color='r')
 plt.plot(xc,yc,'*',color='m')
-#plt.savefig('steady_plate_5_AoA_.png')
+plt.savefig('velocity_symmetric_joukowski_10_AoA_thickness_006.png')
 
 # plot pressure coefficient
 fig2=plt.figure(figsize=(12,8))
 fig2.add_subplot(111)
 plt.plot(xc[:numPanels//2+1],Cp[:numPanels//2+1])
 plt.plot(xc[numPanels//2:],Cp[numPanels//2:])
-plt.xlabel('chord',fontsize=14)
-plt.ylabel(r'$C_P$',fontsize=14)
+plt.legend(['bottom surface','top surface'],loc='lower right',fontsize=14)
+plt.xlabel('chord',fontsize=18)
+plt.ylabel(r'$C_P$',fontsize=18)
+plt.savefig('pressure_symmetric_joukowksi_10_AoA_thickness_006.png')
 
 print('C_L from kutta:',Cl_kutta)
 print('C_L from bernoulli:',Cl_bern)
