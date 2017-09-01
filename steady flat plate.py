@@ -186,7 +186,7 @@ plt.savefig('velocity_steady_plate_5_AoA_thickness_006.png')
 # plot pressure coefficient
 fig2=plt.figure(figsize=(12,8))
 fig2.add_subplot(111)
-plt.plot(xc[:numPanels//2+1],Cp[:numPanels//2+1])
+plt.plot(xc[:numPanels//2],Cp[:numPanels//2])
 plt.plot(xc[numPanels//2:],Cp[numPanels//2:])
 plt.legend(['bottom surface','top surface'],loc='lower right')
 plt.xlabel('chord',fontsize=18)
