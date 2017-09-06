@@ -236,7 +236,7 @@ for t in range(numFrames):
     CPSto[:,t]=CP[:,1]
     AoASto[t]=np.average(AoA)
 
-# plot pressure coefficient
+# plot force in heaving direction
 fig2=plt.figure(figsize=(12,8))
 fig2.add_subplot(111)
 plt.plot(tInterval/tInterval[-1],CYKuttaSto)
@@ -244,4 +244,4 @@ plt.plot(tInterval/tInterval[-1],h_t/h0)
 plt.legend([r'$C_Y$',r'$h/h_0$'],loc='lower right',fontsize=14)
 plt.xlabel('t/T',fontsize=18)
 plt.ylabel(r'$C_Y$',fontsize=18)
-plt.savefig('quasi_steady.png')
+#plt.savefig('quasi_steady.png')

@@ -160,6 +160,8 @@ for i in range(numPoints): # each row of points
         yVelStream[i,j]=np.dot(AFieldy[i*numPoints+j,:],x)+Uinf*np.sin(AoA)
         
 # plot velocity vectors
+title=r'NACA 6409, $   Kutta: C_L = $' + '{:.3f}'.format(Cl_kutta[0]) + r'   Bernoulli: $C_L = $' + '{:.3f}'.format(Cl_bern[0]) + \
+r'   $\alpha$ = ' + '{:.3f}'.format(AoA*180/np.pi) + r'$^\circ$'   
 fig1=plt.figure(figsize=(12,8))
 fig1.add_subplot(111)
 plt.ylim(yLower,yUpper)
@@ -167,7 +169,8 @@ plt.xlim(xLeft,xRight)
 plt.plot(xp,yp)
 plt.quiver(X,Y,xVelStream,yVelStream,color='r')
 plt.plot(xc,yc,'*',color='m')
-#plt.savefig('velocity_symmetric_joukowski_10_AoA_thickness_006.png')
+plt.title(title,fontsize=16)
+plt.savefig('velocity_NACA_6409_AoA_5.png')
 
 # plot pressure coefficient
 fig2=plt.figure(figsize=(12,8))
@@ -177,7 +180,8 @@ plt.plot(xc[numPanels//2:],Cp[numPanels//2:])
 plt.legend(['bottom surface','top surface'],loc='lower right',fontsize=14)
 plt.xlabel('chord',fontsize=18)
 plt.ylabel(r'$C_P$',fontsize=18)
-#plt.savefig('pressure_symmetric_joukowksi_10_AoA_thickness_006.png')
+plt.title(title,fontsize=16)
+plt.savefig('pressure_NACA_6409_AoA_5.png')
 
 print('C_L from kutta:',Cl_kutta)
 print('C_L from bernoulli:',Cl_bern)

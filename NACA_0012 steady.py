@@ -8,38 +8,30 @@ import numpy as np
 import matplotlib.pyplot as plt
 import copy
 
+
 # setup panel coordinates and control point coordinates
-AoA=5*np.pi/180
-Uinf=8.8
+AoA=8*np.pi/180
+Uinf=3
 rho=1.204
-#chord=.12
-chord=.135545
-thickness=.014
-minRad=thickness/2
-majRad=chord/4
-numPanels=64
+pathName='E://Research//Scripts//Potential Flow//Panel Method//Git_Panel_Methods//NACA_0012.txt'
+readObj=open(pathName,'rt')
+numPanels=0
+for line in readObj:
+    numPanels=numPanels+1
+numPanels=numPanels-1
+readObj.close()
+readObj=open(pathName,'rt')
 xp=np.zeros((numPanels+1,1))
 yp=np.zeros((numPanels+1,1))
-
-# panel coordinates for a finite thickness plate with rounded leading edges
-xp[:,0]=chord/2*(np.cos(np.linspace(0,2*np.pi,numPanels+1))+1)
-xp[:,0]=xp[:,0]-chord/2
-yp[:numPanels//2+1]=-thickness*.385*(1-2*xp[:numPanels//2+1]/chord)*(1-(2*xp[:numPanels//2+1]/chord)**2)**(1/2)
-yp[numPanels//2+1:]=thickness*.385*(1-2*xp[numPanels//2+1:]/chord)*(1-(2*xp[numPanels//2+1:]/chord)**2)**(1/2)
-
-# get rid of infintesimal thickness at TE
-#xp=xp[numPanels//8:-(numPanels//8)]
-#yp=yp[numPanels//8:-(numPanels//8)]
-#numPanels=numPanels-(numPanels//8)*2
-#xp[-2]=xp[1]=(chord/2-(chord/2-xp[3])/2) # intermediate end panel for smoothness
-#yp[1]=-thickness*.385*(1-2*xp[1]/chord)*(1-(2*xp[1]/chord)**2)**(1/2) # intermediate end panel for smoothness
-#yp[-2]=-yp[1] # intermediate end panel for smoothness
-#xp[0]=xp[-1]=chord/2 # intermediate end panel for smoothness
-#yp[0]=yp[-1]=0 # make the trailing edge a cusp
-
-xp=xp[numPanels//8-1:-(numPanels//8-1)]
-yp=yp[numPanels//8-1:-(numPanels//8-1)]
-numPanels=numPanels-(numPanels//8-1)*2
+i=0
+for line in readObj:
+    line=line.strip('\n')
+    xp[i]=float(line[:11])
+    yp[i]=float(line[-9:])
+    i=i+1
+readObj.close()
+chord=xp[0]-xp[numPanels//2]
+yp=yp[::-1]
 
 # collocation points
 xc=np.zeros((numPanels,1))
@@ -108,16 +100,13 @@ for i in range(numPanels):
     si[i]=((xp[i+1]-xp[i])**2+(yp[i+1]-yp[i])**2)**(1/2)
     perimeter=perimeter+si[i]
 gamma=x[-1]*perimeter
-Cl_kutta=2*gamma/(Uinf*.12)#!!!!!!!!!!!!
-
-# Lift from conformal mapping
-Cl_J=2*np.pi*(1+.77*thickness/.12)*np.sin(AoA)#!!!!!!!!!!!!!!!!!
+Cl_kutta=2*gamma/(Uinf*chord)
 
 # lift from bernoulli
 dP=np.reshape(1/2*rho*(Uinf**2-tangVelFoil**2),(numPanels,1))
 yForceDist=-dP*si*np.cos(theta-AoA)
 lift_bern=np.sum(yForceDist)
-Cl_bern=2*lift_bern/(rho*Uinf**2*.12)#!!!!!!!!!!!!!!!!
+Cl_bern=2*lift_bern/(rho*Uinf**2*chord)
 
 # moment from bernoulli
 momentBern=np.sum(yForceDist*np.cos(AoA)*-xc)
@@ -126,11 +115,11 @@ momentBern=np.sum(yForceDist*np.cos(AoA)*-xc)
 Cp=dP/(1/2*rho*Uinf**2)
 
 # calculate velocities in the flow field
-numPoints=20
-xLeft=-.075
-xRight=.075
-yLower=-.075
-yUpper=.075
+numPoints=30
+xLeft=-.2
+xRight=1.2
+yLower=-.7
+yUpper=.7
 X,Y=np.meshgrid(np.linspace(xLeft,xRight,numPoints),np.linspace(yLower,yUpper,numPoints))
 upsField=np.zeros((numPoints*numPoints,numPanels))
 wpsField=np.zeros((numPoints*numPoints,numPanels))
@@ -171,8 +160,8 @@ for i in range(numPoints): # each row of points
         yVelStream[i,j]=np.dot(AFieldy[i*numPoints+j,:],x)+Uinf*np.sin(AoA)
         
 # plot velocity vectors
-title=r'NACA 0012, $   Kutta: C_L = $' + '{:.3f}'.format(Cl_kutta[0]) + r'   Bernoulli: $C_L = $' + '{:.3f}'.format(Cl_bern) + \
-r'   $\alpha$ = ' + '{:.3f}'.format(AoA*180/np.pi) + r'$^\circ$' + ' thickness = ' +'{:.3f}'.format(thickness)  
+title=r'NACA 0012, $   Kutta: C_L = $' + '{:.3f}'.format(Cl_kutta[0]) + r'   Bernoulli: $C_L = $' + '{:.3f}'.format(Cl_bern[0]) + \
+r'   $\alpha$ = ' + '{:.3f}'.format(AoA*180/np.pi) + r'$^\circ$'   
 fig1=plt.figure(figsize=(12,8))
 fig1.add_subplot(111)
 plt.ylim(yLower,yUpper)
@@ -180,8 +169,8 @@ plt.xlim(xLeft,xRight)
 plt.plot(xp,yp)
 plt.quiver(X,Y,xVelStream,yVelStream,color='r')
 plt.plot(xc,yc,'*',color='m')
-plt.title(title)
-plt.savefig('velocity_symmetric_joukowski_5_AoA_thickness_014_mod2.png')
+plt.title(title,fontsize=16)
+plt.savefig('velocity_NACA_0012_AoA_5.png')
 
 # plot pressure coefficient
 fig2=plt.figure(figsize=(12,8))
@@ -191,10 +180,9 @@ plt.plot(xc[numPanels//2:],Cp[numPanels//2:])
 plt.legend(['bottom surface','top surface'],loc='lower right',fontsize=14)
 plt.xlabel('chord',fontsize=18)
 plt.ylabel(r'$C_P$',fontsize=18)
-plt.title(title)
-plt.savefig('pressure_symmetric_joukowksi_5_AoA_thickness_014_mod2.png')
+plt.title(title,fontsize=16)
+plt.savefig('pressure_NACA_0012_AoA_5.png')
 
 print('C_L from kutta:',Cl_kutta)
 print('C_L from bernoulli:',Cl_bern)
-print('C_L from conformal mapping:',Cl_J)
 print('moment about pivot: ',momentBern)
