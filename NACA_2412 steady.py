@@ -5,15 +5,14 @@ steady panel method from HSPM
 """
 
 import numpy as np
-import scipy as sc
 import matplotlib.pyplot as plt
 import copy
 
 # setup panel coordinates and control point coordinates
-AoA=0*np.pi/180
+AoA=5*np.pi/180
 Uinf=3
 rho=1.204
-pathName='E://Research//Scripts//Potential Flow//Panel Method//NACA_2412.txt'
+pathName='E://Research//Scripts//Potential Flow//Panel Method//Git_Panel_Methods//NACA_2412.txt'
 readObj=open(pathName,'rt')
 numPanels=0
 for line in readObj:
@@ -26,11 +25,12 @@ yp=np.zeros((numPanels+1,1))
 i=0
 for line in readObj:
     line=line.strip('\n')
-    xp[i]=float(line[:6])
-    yp[i]=float(line[12:])
+    xp[i]=float(line[0:6])
+    yp[i]=float(line[-8:])
     i=i+1
 readObj.close()
 chord=xp[0]-xp[numPanels//2]
+yp=yp[::-1]
 
 # collocation points
 xc=np.zeros((numPanels,1))
@@ -89,8 +89,6 @@ b[-1]=-tangU[0]-tangU[-1]
 x=np.linalg.solve(A,b)
 
 #confirm that velocities on airfoil are tangential
-normVelFoil=np.zeros((numPanels,1))
-tangVelFoil=np.zeros((numPanels,1))
 normVelFoil=np.dot(nSource,x[:-1])+np.dot(nVortex,x[-1]*np.ones((numPanels,1)))+normU
 tangVelFoil=np.dot(tSource,x[:-1])+np.dot(tVortex,x[-1]*np.ones((numPanels,1)))+tangU
 
@@ -101,10 +99,7 @@ for i in range(numPanels):
     si[i]=((xp[i+1]-xp[i])**2+(yp[i+1]-yp[i])**2)**(1/2)
     perimeter=perimeter+si[i]
 gamma=x[-1]*perimeter
-lift_kutta=rho*Uinf*gamma
-
-# Lift from conformal mapping
-Cl_kutta=2*lift_kutta/(rho*Uinf**2*chord)
+Cl_kutta=2*gamma/(Uinf*chord)
 
 # lift from bernoulli
 dP=np.reshape(1/2*rho*(Uinf**2-tangVelFoil**2),(numPanels,1))
@@ -112,12 +107,18 @@ yForceDist=-dP*si*np.cos(theta-AoA)
 lift_bern=np.sum(yForceDist)
 Cl_bern=2*lift_bern/(rho*Uinf**2*chord)
 
+# moment from bernoulli
+momentBern=np.sum(yForceDist*np.cos(AoA)*-xc)
+
+# coefficient of pressure over chord, 1st column collocation point, 2nd column Cp
+Cp=dP/(1/2*rho*Uinf**2)
+
 # calculate velocities in the flow field
-numPoints=20
-xLeft=-.25
-xRight=1.25
-yLower=-.75
-yUpper=.75
+numPoints=30
+xLeft=-.2
+xRight=1.2
+yLower=-.7
+yUpper=.7
 X,Y=np.meshgrid(np.linspace(xLeft,xRight,numPoints),np.linspace(yLower,yUpper,numPoints))
 upsField=np.zeros((numPoints*numPoints,numPanels))
 wpsField=np.zeros((numPoints*numPoints,numPanels))
@@ -156,7 +157,7 @@ for i in range(numPoints): # each row of points
     for j in range(numPoints): # each point in row
         xVelStream[i,j]=np.dot(AFieldx[i*numPoints+j,:],x)+Uinf*np.cos(AoA)
         yVelStream[i,j]=np.dot(AFieldy[i*numPoints+j,:],x)+Uinf*np.sin(AoA)
-
+        
 # plot velocity vectors
 fig1=plt.figure(figsize=(12,8))
 fig1.add_subplot(111)
@@ -165,7 +166,18 @@ plt.xlim(xLeft,xRight)
 plt.plot(xp,yp)
 plt.quiver(X,Y,xVelStream,yVelStream,color='r')
 plt.plot(xc,yc,'*',color='m')
-#plt.savefig('steady_plate_15_AoA.png')
+#plt.savefig('velocity_symmetric_joukowski_10_AoA_thickness_006.png')
+
+# plot pressure coefficient
+fig2=plt.figure(figsize=(12,8))
+fig2.add_subplot(111)
+plt.plot(xc[:numPanels//2],Cp[:numPanels//2])
+plt.plot(xc[numPanels//2:],Cp[numPanels//2:])
+plt.legend(['bottom surface','top surface'],loc='lower right',fontsize=14)
+plt.xlabel('chord',fontsize=18)
+plt.ylabel(r'$C_P$',fontsize=18)
+#plt.savefig('pressure_symmetric_joukowksi_10_AoA_thickness_006.png')
 
 print('C_L from kutta:',Cl_kutta)
 print('C_L from bernoulli:',Cl_bern)
+print('moment about pivot: ',momentBern)

@@ -9,14 +9,14 @@ import matplotlib.pyplot as plt
 import copy
 
 # setup panel coordinates and control point coordinates
-AoA=10*np.pi/180
+AoA=5*np.pi/180
 Uinf=8.8
 rho=1.204
 chord=.12
 thickness=.006
 minRad=thickness/2
 majRad=chord/4
-numPanels=64
+numPanels=32
 panel_coor=np.zeros((numPanels+1,2))
 xp=np.zeros((numPanels+1,1))
 yp=np.zeros((numPanels+1,1))
@@ -26,6 +26,11 @@ xp[:,0]=chord/2*(np.cos(np.linspace(0,2*np.pi,numPanels+1))+1)
 xp[:,0]=xp[:,0]-chord/2
 yp[:numPanels//2+1]=-thickness*.385*(1-2*xp[:numPanels//2+1]/chord)*(1-(2*xp[:numPanels//2+1]/chord)**2)**(1/2)
 yp[numPanels//2+1:]=thickness*.385*(1-2*xp[numPanels//2+1:]/chord)*(1-(2*xp[numPanels//2+1:]/chord)**2)**(1/2)
+
+# get rid of infintesimal thickness at TE
+#xp=xp[5:-5]
+#yp=yp[5:-5]
+#numPanels=numPanels-10
 
 # collocation points
 xc=np.zeros((numPanels,1))

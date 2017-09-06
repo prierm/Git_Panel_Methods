@@ -14,7 +14,7 @@ Uinf=8.8
 rho=1.204
 chord=.12
 span=chord*2
-thickness=.006
+thickness=.01
 minRad=thickness/2
 majRad=chord/4
 numPanels=64
@@ -125,11 +125,12 @@ Cl_bern=2*lift_bern/(rho*Uinf**2*chord)
 # moment about pitching axis from Bernoulli
 momentBern=np.sum(yForceDist*np.cos(AoA)*-xc)
 
-# coefficient of pressure over chord, 1st column collocation point, 2nd column Cp
-Cp=dP/(1/2*rho*Uinf**2)
+# coefficient of pressure over chord
+#Cp=dP/(1/2*rho*Uinf**2)
+Cp=1-(tangVelFoil/Uinf)**2
 
 # calculate velocities in the flow field
-numPoints=30
+numPoints=20
 xLeft=-.1
 xRight=.1
 yLower=-.1
@@ -186,8 +187,8 @@ plt.savefig('velocity_steady_plate_5_AoA_thickness_006.png')
 # plot pressure coefficient
 fig2=plt.figure(figsize=(12,8))
 fig2.add_subplot(111)
-plt.plot(xc[:numPanels//2],Cp[:numPanels//2])
-plt.plot(xc[numPanels//2:],Cp[numPanels//2:])
+plt.plot(xc[:numPanels//2],Cp[:numPanels//2],'*')
+plt.plot(xc[numPanels//2:],Cp[numPanels//2:],'o')
 plt.legend(['bottom surface','top surface'],loc='lower right')
 plt.xlabel('chord',fontsize=18)
 plt.ylabel(r'$C_P$',fontsize=18)

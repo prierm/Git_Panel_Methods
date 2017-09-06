@@ -8,12 +8,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 import copy
 
-
 # setup panel coordinates and control point coordinates
 AoA=5*np.pi/180
 Uinf=3
 rho=1.204
-pathName='E://Research//Scripts//Potential Flow//Panel Method//Git_Panel_Methods//NACA_6409.txt'
+pathName='E://Research//Scripts//Potential Flow//Panel Method//Git_Panel_Methods//NACA_4412.txt'
 readObj=open(pathName,'rt')
 numPanels=0
 for line in readObj:
@@ -26,8 +25,8 @@ yp=np.zeros((numPanels+1,1))
 i=0
 for line in readObj:
     line=line.strip('\n')
-    xp[i]=float(line[:9])
-    yp[i]=float(line[-8:])
+    xp[i]=float(line[:6])
+    yp[i]=float(line[-7:])
     i=i+1
 readObj.close()
 chord=xp[0]-xp[numPanels//2]
