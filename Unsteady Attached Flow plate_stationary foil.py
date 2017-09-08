@@ -11,7 +11,7 @@ import copy
 
 # some initial data
 pathName='E://Research//Scripts//Potential Flow//Panel Method//Git_Panel_Methods//frames'
-Uinf=8.8
+Uinf=3
 rho=1.204
 chord=.12
 thickness=.006
@@ -21,7 +21,7 @@ numPanels=64
 xp=np.zeros((numPanels+1,1))
 yp=np.zeros((numPanels+1,1))
 
-# panel coordinates for a finite thickness plate with rounded leading edges
+# panel coordinates in terms of global x and y
 xStep=chord/(numPanels/2)
 xp[0]=chord/2
 yp[0]=0
@@ -51,8 +51,13 @@ for i in range(numPanels):
     xc[i]=(xp[i]+xp[i+1])/2
     yc[i]=(yp[i]+yp[i+1])/2
 
+xpOld=copy.copy(xp)
+ypOld=copy.copy(yp)
+xcOld=copy.copy(xc)
+ycOld=copy.copy(yc)
+
 # time frames, panel positions, collocation positions, induced freestream velocities
-numFrames=24
+numFrames=10
 tEnd=.5
 tInterval=np.linspace(0,tEnd,numFrames)
 f=2
@@ -71,7 +76,7 @@ yUpper=.1
 X,Y=np.meshgrid(np.linspace(xLeft,xRight,numPoints),np.linspace(yLower,yUpper,numPoints))
 
 # things that don't change
-# thetas for each panel
+# thetas for each panel relative to the foil
 theta=np.zeros((numPanels,1))
 for i in range(numPanels):
     theta[i]=np.arctan2(yp[i+1]-yp[i],xp[i+1]-xp[i])
@@ -94,13 +99,13 @@ np.fill_diagonal(wps,.5)
 upv=copy.copy(wps)
 wpv=-ups
 
-#   calculate normal tangential influence coefficients
+#   calculate normal tangential influence coefficients 
 nSource=-np.sin(theta-np.transpose(theta))*(ups)+np.cos(theta-np.transpose(theta))*(wps)
 tSource=np.cos(theta-np.transpose(theta))*(ups)+np.sin(theta-np.transpose(theta))*(wps)
 nVortex=-np.sin(theta-np.transpose(theta))*(upv)+np.cos(theta-np.transpose(theta))*(wpv)
 tVortex=np.cos(theta-np.transpose(theta))*(upv)+np.sin(theta-np.transpose(theta))*(wpv)
 
-#   matrix A
+#   matrix A (everything in normal tangential coordinates)
 A=np.zeros((numPanels+1,numPanels+1))
 A[:numPanels,:numPanels]=nSource
 A[:numPanels,-1]=np.sum(nVortex,axis=1)
@@ -112,8 +117,8 @@ si=np.zeros((numPanels,1))
 perimeter=0
 for i in range(numPanels):
         si[i]=((xp[i+1]-xp[i])**2+(yp[i+1]-yp[i])**2)**(1/2)
-        perimeter=perimeter+si[i]
- 
+        perimeter=perimeter+si[i] 
+
 #   calculate velocities in the flow field
 upsField=np.zeros((numPoints*numPoints,numPanels))
 wpsField=np.zeros((numPoints*numPoints,numPanels))
@@ -132,7 +137,7 @@ for i in range(numPoints): # each row of grid points
 upvField=copy.copy(wpsField)
 wpvField=-upsField
 
-#   transform influence coefficients to cartesian
+#   transform influence coefficients to foil frame
 ugsField=upsField*np.cos(np.transpose(theta))-wpsField*np.sin(np.transpose(theta))
 wgsField=upsField*np.sin(np.transpose(theta))+wpsField*np.cos(np.transpose(theta))
 ugvField=upvField*np.cos(np.transpose(theta))-wpvField*np.sin(np.transpose(theta))
@@ -147,69 +152,78 @@ AFieldy[:,:numPanels]=wgsField
 AFieldy[:,-1]=np.sum(wgvField,axis=1)
 
 xVelStream=np.zeros((numPoints,numPoints))
-yVelStream=np.zeros((numPoints,numPoints))  
-      
+yVelStream=np.zeros((numPoints,numPoints)) 
+
 # data storage
 tangVelSto=np.zeros((numPanels,numFrames))
 ClKuttaSto=np.zeros((numFrames,1))
 CYKuttaSto=np.zeros((numFrames,1))
-ClBernSto=np.zeros((numFrames,1))
 CYBernSto=np.zeros((numFrames,1))
 xSto=np.zeros((numPanels+1,numFrames))
 momSto=np.zeros((numFrames,1))
-CPSto=np.zeros((numPanels//2,numFrames))
-AoASto=np.zeros((numFrames,1))
 
 # panel method for each snap shot in time interval
-for t in range(numFrames):     
-    # induced velocity and AoA at collocation point
-    AoA=theta_t[t]-np.arctan2(h_t_dot[t]-xc*theta_t_dot[t]*np.cos(theta_t[t]),Uinf+theta_t_dot[t]*xc*np.sin(theta_t[t]))#!!!!!!!!!!!!!!
-#    AoA=theta_t[t]+np.arctan2((Uinf+theta_t_dot[t]*xc*np.sin(theta_t[t]))*np.sin(theta_t[t])+(-h_t_dot[t]+theta_t_dot[t]*xc*np.cos(theta_t[t]))*np.cos(theta_t[t]),\
-#               (Uinf+theta_t_dot[t]*xc*np.sin(theta_t[t]))*np.cos(theta_t[t])+(-h_t_dot[t]+theta_t_dot[t]*xc*np.cos(theta_t[t]))*-np.sin(theta_t[t]))
-    normU=Uinf*np.sin(AoA-theta)
-    tangU=Uinf*np.cos(AoA-theta)
+for t in range(numFrames):
+    # freestream in terms of normal tangential coordinates
+    normU=(-np.sin(theta)*np.cos(theta_t[t])+np.cos(theta)*np.sin(theta_t[t]))*Uinf#!!!!!!!!!!!!
+    tangU=(np.cos(theta)*np.cos(theta_t[t])+np.sin(theta_t[t])*np.sin(theta))*Uinf
+    
+    #foil contribution
+    foilVelNorm=-h_t_dot[t]*np.sin(theta_t[t])*np.sin(theta)+(-h_t_dot[t]*np.cos(theta_t[t])-theta_t_dot[t]*-xc)*np.cos(theta)
+    foilVelTang=h_t_dot[t]*np.sin(theta_t[t])*np.cos(theta)+(-h_t_dot[t]*np.cos(theta_t[t])-theta_t_dot[t]*-xc)*np.sin(theta)
     
     # vector b
     b=np.zeros((numPanels+1,1))
-    b[:-1]=-normU
-    b[-1]=-tangU[0]-tangU[-1]
+    b[:-1]=-(normU+foilVelNorm)
+    b[-1]=(-tangU[0]-tangU[-1])+(-foilVelTang[0]-foilVelTang[-1])
     
     # solve exactly
     x=np.linalg.solve(A,b)
     
     #confirm that velocities on airfoil are tangential
-    normVelFoil=np.dot(nSource,x[:-1])+np.dot(nVortex,x[-1]*np.ones((numPanels,1)))+normU
-    tangVelFoil=np.dot(tSource,x[:-1])+np.dot(tVortex,x[-1]*np.ones((numPanels,1)))+tangU
+    normVelFoil=np.dot(nSource,x[:-1])+np.dot(nVortex,x[-1]*np.ones((numPanels,1)))+(normU+foilVelNorm)
+    tangVelFoil=np.dot(tSource,x[:-1])+np.dot(tVortex,x[-1]*np.ones((numPanels,1)))+(tangU+foilVelTang)
     
     # Lift from kutta
     gamma=x[-1]*perimeter
     Cl_kutta=2*gamma/(Uinf*chord)
-    CY_kutta=Cl_kutta*np.cos(np.average(AoA))
+    CY_kutta=Cl_kutta*np.cos(-np.arctan2(h_t_dot[t],Uinf))#!!!!!!!!!!!!!!!!!!!!
     
     # lift from bernoulli
     dP=np.reshape(1/2*rho*(Uinf**2-tangVelFoil**2),(numPanels,1))
-    yForceDist=-dP*si*np.cos(theta-AoA)
-    lift_bern=np.sum(yForceDist)
-    Cl_bern=2*lift_bern/(rho*Uinf**2*chord)
-    CY_bern=Cl_bern*np.cos(np.average(AoA))
+    forceDist=-dP*si#!!!!!!!!!!!!!!!!!!!
+    Fy_bern=np.sum(forceDist*(np.sin(theta_t[t])*np.sin(theta)+np.cos(theta_t[t])*np.cos(theta)))
+    CY_bern=2*Fy_bern/(rho*Uinf**2*chord)
     
     # moment from bernoulli
-    momentBern=np.sum(yForceDist*np.cos(AoA)*-xc)
+    momentBern=np.sum(forceDist*np.cos(theta)*-xc)#!!!!!!!!!!!!!!!!
     
-    # coefficient of pressure over chord, 1st column collocation point, 2nd column Cp
-    CP=np.zeros((numPanels//2,2))
-    CP[:,0]=np.reshape(xc[:numPanels//2],(numPanels//2,))
-    CP[:,1]=np.reshape((dP[:numPanels//2]-dP[numPanels//2-1::-1])/(1/2*rho*Uinf**2),(numPanels//2,))
+    # coefficient of pressure over chord
+ 
     
-    # adjust freestream velocity in domain to account for heaving and pitching
-    xModU=(Uinf+theta_t_dot[t]*X[0,:]*np.sin(theta_t[t]))*np.cos(theta_t[t])+(-h_t_dot[t]+theta_t_dot[t]*X[0,:]*np.cos(theta_t[t]))*-np.sin(theta_t[t])
-    yModU=(Uinf+theta_t_dot[t]*X[0,:]*np.sin(theta_t[t]))*np.sin(theta_t[t])+(-h_t_dot[t]+theta_t_dot[t]*X[0,:]*np.cos(theta_t[t]))*np.cos(theta_t[t])
+    # adjust freestream velocity in domain to account for heaving and pitching (foil coordinate system)
+    xModU=Uinf*np.cos(theta_t[t])+h_t_dot[t]*np.sin(theta_t[t])#!!!!!!!!!!!!!!!!!
+    yModU=Uinf*np.sin(theta_t[t])+(-h_t_dot[t]*np.cos(theta_t[t])+theta_t_dot[t]*X[0,:])
     
-    # calculate velocity stream vectors 
+    # calculate velocity stream vectors in foil coordinate system
     for i in range(numPoints): # each row of points
         for j in range(numPoints): # each point in row
-            xVelStream[i,j]=np.dot(AFieldx[i*numPoints+j,:],x)+xModU[j]
+            xVelStream[i,j]=np.dot(AFieldx[i*numPoints+j,:],x)+xModU#!!!!!!!!!!!!
             yVelStream[i,j]=np.dot(AFieldy[i*numPoints+j,:],x)+yModU[j]
+    
+    # rotate velocity vectors to Global X Y
+    XVelStream=xVelStream*np.cos(theta_t[t])+yVelStream*np.sin(theta_t[t])
+    YVelStream=-xVelStream*np.sin(theta_t[t])+yVelStream*np.cos(theta_t[t])
+    
+    # rotate and shift position for each velocity vector
+    newX=X+theta_t[t]*-X*np.sin(theta_t[t])#!!!!!!!!!!!!!!!!
+    newY=Y+h_t[t]+theta_t[t]*-X*np.cos(theta_t[t])
+    
+    # update panel coordinates and collocation points
+    xp=xpOld+theta_t[t]*-xpOld*np.sin(theta_t[t])
+    xc=xcOld+theta_t[t]*-xcOld*np.sin(theta_t[t])
+    yp=ypOld+h_t[t]+theta_t[t]*-xpOld*np.cos(theta_t[t])
+    yc=ycOld+h_t[t]+theta_t[t]*-xcOld*np.cos(theta_t[t])    
     
     # plot velocity vectors
     title='t/T = ' + '{:3f}'.format(tInterval[t]/tEnd)+ r' , $\theta_p = $' + '{:3f}'.format(theta_t[t]/np.pi*180) +' deg , ' + r'$C_L = $' + '{:3f}'.format(Cl_kutta[0]) +\
@@ -220,7 +234,7 @@ for t in range(numFrames):
     plt.ylim(yLower,yUpper)
     plt.xlim(xLeft,xRight)
     plt.plot(xp,yp)
-    plt.quiver(X,Y,xVelStream,yVelStream,color='r')
+    plt.quiver(newX,newY,XVelStream,YVelStream,color='r')
     plt.plot(xc,yc,'*',color='m')
     plt.savefig(pathName + '//frame' + str(t))
     plt.close()
@@ -229,12 +243,9 @@ for t in range(numFrames):
     tangVelSto[:,t]=tangVelFoil[:,0]
     ClKuttaSto[t]=Cl_kutta
     CYKuttaSto[t]=CY_kutta
-    ClBernSto[t]=Cl_bern
     CYBernSto[t]=CY_bern
     xSto[:,t]=x[:,0]
     momSto[t]=momentBern
-    CPSto[:,t]=CP[:,1]
-    AoASto[t]=np.average(AoA)
 
 # plot force in heaving direction
 fig2=plt.figure(figsize=(12,8))
@@ -244,4 +255,16 @@ plt.plot(tInterval/tInterval[-1],h_t/h0)
 plt.legend([r'$C_Y$',r'$h/h_0$'],loc='lower right',fontsize=14)
 plt.xlabel('t/T',fontsize=18)
 plt.ylabel(r'$C_Y$',fontsize=18)
+plt.title('From Kutta')
 #plt.savefig('quasi_steady.png')
+
+fig3=plt.figure(figsize=(12,8))
+fig3.add_subplot(111)
+plt.plot(tInterval/tInterval[-1],CYBernSto)
+plt.plot(tInterval/tInterval[-1],h_t/h0)
+plt.legend([r'$C_Y$',r'$h/h_0$'],loc='lower right',fontsize=14)
+plt.xlabel('t/T',fontsize=18)
+plt.ylabel(r'$C_Y$',fontsize=18)
+plt.title('From Bernoulli')
+#plt.savefig('quasi_steady.png')
+
