@@ -57,8 +57,8 @@ xcOld=copy.copy(xc)
 ycOld=copy.copy(yc)
 
 # time frames, panel positions, collocation positions, induced freestream velocities
-numFrames=10
-tEnd=.5
+numFrames=3
+tEnd=.1
 tInterval=np.linspace(0,tEnd,numFrames)
 f=2
 omega=2*np.pi*f
@@ -123,34 +123,6 @@ for i in range(numPanels):
 upsField=np.zeros((numPoints*numPoints,numPanels))
 wpsField=np.zeros((numPoints*numPoints,numPanels))
 
-#   influence coefficients for points outside the foil
-for i in range(numPoints): # each row of grid points
-    for j in range(numPoints): # each grid point in each row
-        for k in range(numPanels): # for each panel
-            r1=((X[0,j]-xp[k])**2+(Y[i,0]-yp[k])**2)**(1/2)
-            r2=((X[0,j]-xp[k+1])**2+(Y[i,0]-yp[k+1])**2)**(1/2)
-            nu2=np.arctan2(-(X[0,j]-xp[k])*np.sin(theta[k])+(Y[i,0]-yp[k])*np.cos(theta[k])+(xp[k+1]-xp[k])*np.sin(theta[k])-(yp[k+1]-yp[k])*np.cos(theta[k]),\
-                         (X[0,j]-xp[k])*np.cos(theta[k])+(Y[i,0]-yp[k])*np.sin(theta[k])-(xp[k+1]-xp[k])*np.cos(theta[k])-(yp[k+1]-yp[k])*np.sin(theta[k]))
-            nu1=np.arctan2(-(X[0,j]-xp[k])*np.sin(theta[k])+(Y[i,0]-yp[k])*np.cos(theta[k]),(X[0,j]-xp[k])*np.cos(theta[k])+(Y[i,0]-yp[k])*np.sin(theta[k]))
-            upsField[i*numPoints+j,k]=1/(4*np.pi)*np.log(r1**2/r2**2)
-            wpsField[i*numPoints+j,k]=1/(2*np.pi)*(nu2-nu1)
-upvField=copy.copy(wpsField)
-wpvField=-upsField
-
-#   transform influence coefficients to foil frame
-ugsField=upsField*np.cos(np.transpose(theta))-wpsField*np.sin(np.transpose(theta))
-wgsField=upsField*np.sin(np.transpose(theta))+wpsField*np.cos(np.transpose(theta))
-ugvField=upvField*np.cos(np.transpose(theta))-wpvField*np.sin(np.transpose(theta))
-wgvField=upvField*np.sin(np.transpose(theta))+wpvField*np.cos(np.transpose(theta))
-
-#   x and y influence coefficients for points outside the foil
-AFieldx=np.zeros((numPoints*numPoints,numPanels+1))
-AFieldy=np.zeros((numPoints*numPoints,numPanels+1))
-AFieldx[:,:numPanels]=ugsField
-AFieldx[:,-1]=np.sum(ugvField,axis=1)
-AFieldy[:,:numPanels]=wgsField
-AFieldy[:,-1]=np.sum(wgvField,axis=1)
-
 xVelStream=np.zeros((numPoints,numPoints))
 yVelStream=np.zeros((numPoints,numPoints)) 
 
@@ -161,7 +133,6 @@ CYKuttaSto=np.zeros((numFrames,1))
 CYBernSto=np.zeros((numFrames,1))
 xSto=np.zeros((numPanels+1,numFrames))
 momSto=np.zeros((numFrames,1))
-chordSto=np.zeros((numFrames,1))
 
 # panel method for each snap shot in time interval
 for t in range(numFrames):
@@ -200,40 +171,62 @@ for t in range(numFrames):
     momentBern=np.sum(forceDist*np.cos(theta)*-xc)#!!!!!!!!!!!!!!!!
     
     # coefficient of pressure over chord
- 
     
-    # adjust freestream velocity in domain to account for heaving and pitching (foil coordinate system)
-    xModU=Uinf*np.cos(theta_t[t])+h_t_dot[t]*np.sin(theta_t[t])#!!!!!!!!!!!!!!!!!
-    yModU=Uinf*np.sin(theta_t[t])+(-h_t_dot[t]*np.cos(theta_t[t])+theta_t_dot[t]*X[0,:])
+    # update panel coordinates 
+    xp=xpOld+xpOld*np.cos(theta_t[t])
+    yp=ypOld+h_t[t]-xpOld*np.sin(theta_t[t])
     
-    # calculate velocity stream vectors in foil coordinate system
+    #   influence coefficients for points outside the foil in panel coor sys
+    for i in range(numPoints): # each row of grid points
+        for j in range(numPoints): # each grid point in each row
+            for k in range(numPanels): # for each panel
+                r1=((X[0,j]-xp[k])**2+(Y[i,0]-yp[k])**2)**(1/2)
+                r2=((X[0,j]-xp[k+1])**2+(Y[i,0]-yp[k+1])**2)**(1/2)
+                nu2=np.arctan2(-(X[0,j]-xp[k])*np.sin(theta[k])+(Y[i,0]-yp[k])*np.cos(theta[k])+(xp[k+1]-xp[k])*np.sin(theta[k])-(yp[k+1]-yp[k])*np.cos(theta[k]),\
+                             (X[0,j]-xp[k])*np.cos(theta[k])+(Y[i,0]-yp[k])*np.sin(theta[k])-(xp[k+1]-xp[k])*np.cos(theta[k])-(yp[k+1]-yp[k])*np.sin(theta[k]))
+                nu1=np.arctan2(-(X[0,j]-xp[k])*np.sin(theta[k])+(Y[i,0]-yp[k])*np.cos(theta[k]),(X[0,j]-xp[k])*np.cos(theta[k])+(Y[i,0]-yp[k])*np.sin(theta[k]))
+                upsField[i*numPoints+j,k]=1/(4*np.pi)*np.log(r1**2/r2**2)
+                wpsField[i*numPoints+j,k]=1/(2*np.pi)*(nu2-nu1)
+    upvField=copy.copy(wpsField)
+    wpvField=-upsField
+    
+    #   transform influence coefficients to foil frame
+    ugsField=upsField*np.cos(np.transpose(theta))-wpsField*np.sin(np.transpose(theta))
+    wgsField=upsField*np.sin(np.transpose(theta))+wpsField*np.cos(np.transpose(theta))
+    ugvField=upvField*np.cos(np.transpose(theta))-wpvField*np.sin(np.transpose(theta))
+    wgvField=upvField*np.sin(np.transpose(theta))+wpvField*np.cos(np.transpose(theta))
+    
+    #   transform to global X Y
+    upsField=copy.copy(ugsField)
+    wpsField=copy.copy(wgsField)
+    upvField=copy.copy(ugvField)
+    wpvField=copy.copy(wgvField)
+    
+    ugsField=upsField*np.cos(theta_t[t])+wpsField*np.sin(theta_t[t])
+    wgsField=-upsField*np.sin(theta_t[t])+wpsField*np.cos(theta_t[t])
+    ugvField=upvField*np.cos(theta_t[t])+wpvField*np.sin(theta_t[t])
+    wgvField=-upvField*np.sin(theta_t[t])+wpvField*np.cos(theta_t[t])
+    
+    #   x and y influence coefficients for points outside the foil global X Y
+    AFieldx=np.zeros((numPoints*numPoints,numPanels+1))
+    AFieldy=np.zeros((numPoints*numPoints,numPanels+1))
+    AFieldx[:,:numPanels]=ugsField
+    AFieldx[:,-1]=np.sum(ugvField,axis=1)
+    AFieldy[:,:numPanels]=wgsField
+    AFieldy[:,-1]=np.sum(wgvField,axis=1)
+    
+    # adjust freestream velocity in domain to account for heaving and pitching (global X Y)
+    xModU=Uinf-theta_t_dot[t]*-X*np.cos(np.arctan2(Y-h_t[t],-X)-theta_t[t])*np.sin(theta_t[t])
+    yModU=-theta_t_dot[t]*-X*np.cos(np.arctan2(Y-h_t[t],-X)-theta_t[t])*np.cos(theta_t[t])-h_t_dot[t]
+    
+    # calculate velocity stream vectors in global X Y
     for i in range(numPoints): # each row of points
         for j in range(numPoints): # each point in row
-            xVelStream[i,j]=np.dot(AFieldx[i*numPoints+j,:],x)+xModU#!!!!!!!!!!!!
-            yVelStream[i,j]=np.dot(AFieldy[i*numPoints+j,:],x)+yModU[j]
-    
-    # rotate velocity vectors to Global X Y
-    XVelStream=xVelStream*np.cos(theta_t[t])+yVelStream*np.sin(theta_t[t])
-    YVelStream=-xVelStream*np.sin(theta_t[t])+yVelStream*np.cos(theta_t[t])
-    
-    # rotate and shift position for each velocity vector
-#    newX=X+theta_t[t]*-X*np.sin(theta_t[t])
-#    newY=Y+h_t[t]+theta_t[t]*-X*np.cos(theta_t[t])
-    newX=X*np.cos(theta_t[t])+Y*np.sin(theta_t[t])
-    newY=-X*np.sin(theta_t[t])+Y*np.cos(theta_t[t])+h_t[t]
-    
-    # update panel coordinates and collocation points
-#    xp=xpOld+theta_t[t]*-xpOld*np.sin(theta_t[t])
-#    xc=xcOld+theta_t[t]*-xcOld*np.sin(theta_t[t])
-#    yp=ypOld+h_t[t]+theta_t[t]*-xpOld*np.cos(theta_t[t])
-#    yc=ycOld+h_t[t]+theta_t[t]*-xcOld*np.cos(theta_t[t])    
-    xp=xpOld*np.cos(theta_t[t])+ypOld*np.sin(theta_t[t])
-    yp=-xpOld*np.sin(theta_t[t])+ypOld*np.cos(theta_t[t])+h_t[t]
-    xc=xcOld*np.cos(theta_t[t])+ycOld*np.sin(theta_t[t])
-    yc=-xcOld*np.sin(theta_t[t])+ycOld*np.cos(theta_t[t])+h_t[t]
+            xVelStream[i,j]=np.dot(AFieldx[i*numPoints+j,:],x)+xModU[i,j]
+            yVelStream[i,j]=np.dot(AFieldy[i*numPoints+j,:],x)+yModU[i,j]
     
     # plot velocity vectors
-    title='t/T = ' + '{:3f}'.format(tInterval[t]/tEnd)+ r' , $\theta_p = $' + '{:3f}'.format(theta_t[t]/np.pi*180) +' deg , ' + r'$C_L = $' + '{:3f}'.format(Cl_kutta[0]) +\
+    title='t/T = ' + '{:3f}'.format(tEnd/.5)+ r' , $\theta_p = $' + '{:3f}'.format(theta_t[t]/np.pi*180) +' deg , ' + r'$C_L = $' + '{:3f}'.format(Cl_kutta[0]) +\
                       r' , $C_Y = $' + '{:3f}'.format(CY_kutta[0])
     fig1=plt.figure(figsize=(12,8))
     fig1.suptitle(title,fontsize=14)
@@ -241,8 +234,7 @@ for t in range(numFrames):
     plt.ylim(yLower,yUpper)
     plt.xlim(xLeft,xRight)
     plt.plot(xp,yp)
-    plt.quiver(newX,newY,XVelStream,YVelStream,color='r')
-    plt.plot(xc,yc,'*',color='m')
+    plt.quiver(X,Y,xVelStream,yVelStream,color='r')
     plt.savefig(pathName + '//frame' + str(t))
     plt.close()
     
@@ -253,7 +245,6 @@ for t in range(numFrames):
     CYBernSto[t]=CY_bern
     xSto[:,t]=x[:,0]
     momSto[t]=momentBern
-    chordSto[t]=((xp[numPanels//2]-xp[0])**2+(yp[numPanels//2]-yp[0])**2)**(1/2)
 
 # plot force in heaving direction
 fig2=plt.figure(figsize=(12,8))
